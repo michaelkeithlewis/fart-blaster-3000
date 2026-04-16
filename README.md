@@ -17,6 +17,22 @@ Grab the latest release from the [Releases page](../../releases). The zip contai
 
 ## Installation (macOS)
 
+### IMPORTANT: Removing Gatekeeper quarantine
+
+macOS will block the downloaded files because they aren't code-signed with an Apple Developer certificate. After unzipping, you **must** run this command in Terminal before opening anything:
+
+```bash
+xattr -cr "Fart Blaster 3000.vst3" "Fart Blaster 3000.component" "Fart Blaster 3000.app"
+```
+
+Or to do it all at once from the unzipped folder:
+
+```bash
+xattr -cr *
+```
+
+Without this step, macOS will say the app "is damaged and can't be opened."
+
 ### VST3
 Copy `Fart Blaster 3000.vst3` to:
 ```
