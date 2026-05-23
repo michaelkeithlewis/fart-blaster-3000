@@ -18,21 +18,9 @@ Grab the latest release from the [Releases page](../../releases). The zip contai
 
 ## Installation (macOS)
 
-### IMPORTANT: Removing Gatekeeper quarantine
+Release builds (v1.1.1 and later) are signed with a Developer ID Application certificate and notarized by Apple, so macOS Gatekeeper will accept them on download with no extra steps. Just unzip and copy the bundles into the folders below.
 
-macOS will block the downloaded files because they aren't code-signed with an Apple Developer certificate. After unzipping, you **must** run this command in Terminal before opening anything:
-
-```bash
-xattr -cr "Fart Blaster 3000.vst3" "Fart Blaster 3000.component" "Fart Blaster 3000.app"
-```
-
-Or to do it all at once from the unzipped folder:
-
-```bash
-xattr -cr *
-```
-
-Without this step, macOS will say the app "is damaged and can't be opened."
+> Building from source produces an ad-hoc signed binary, not a notarized one — if you build it yourself and Gatekeeper complains, run `xattr -cr *` in the build output folder to clear the quarantine xattr.
 
 ### VST3
 Copy `Fart Blaster 3000.vst3` to:
@@ -75,6 +63,24 @@ cmake --build . --config Release -j$(nproc)
 ```
 
 The built plugins will be in `build/FartBlaster_artefacts/Release/` and automatically copied to your system plugin folders.
+
+### Signed release builds (maintainers only)
+
+To produce a Developer-ID-signed build, pass your identity to CMake:
+
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+    -DAPPLE_DEV_ID="Developer ID Application: YOUR NAME (TEAMID)" \
+    -DAPPLE_TEAM_ID=TEAMID
+cmake --build . --config Release -j$(nproc)
+```
+
+After building, notarize the zipped output with:
+
+```bash
+xcrun notarytool submit FartBlaster3000-macOS.zip --keychain-profile <profile> --wait
+xcrun stapler staple "Fart Blaster 3000.vst3" "Fart Blaster 3000.component" "Fart Blaster 3000.app"
+```
 
 ## What's Inside
 
