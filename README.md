@@ -6,6 +6,7 @@ The Ultimate Flatulence Experience. A VST3/AU audio plugin that plays randomized
 
 - **HOW MUCH?** — Controls how often farts play. All the way left = OFF. All the way right = nonstop back-to-back farts. The current interval is displayed below the knob.
 - **HOW WET?** — Blends in a stereo delay (340ms echo with feedback) and reverb. At 0 = pure dry farts. Crank it up for farts in a cathedral.
+- **STEREO** — Toggles stereophonic mode. ON: each fart is panned randomly across the field and the delay ping-pongs L↔R for a wide stereo image. OFF: classic mono behavior — farts in the center, delay echoes stay put.
 
 ## Download
 
@@ -79,8 +80,8 @@ The built plugins will be in `build/FartBlaster_artefacts/Release/` and automati
 
 - 100 premium artisanal fart samples (16-bit WAV, embedded in the binary)
 - 16-voice polyphony (yes, 16 simultaneous farts)
-- Stereo delay with feedback
-- Freeverb-based reverb
+- Ping-pong stereo delay with feedback (switchable mono/stereo)
+- Freeverb-based reverb with per-voice random panning in stereo mode
 - Animated stink line GUI in Papyrus font
 - Clickable Truck Packer branding
 

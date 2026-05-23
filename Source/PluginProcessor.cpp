@@ -10,6 +10,7 @@ FartBlasterProcessor::FartBlasterProcessor()
 {
     howMuchParam = apvts.getRawParameterValue("howMuch");
     howWetParam = apvts.getRawParameterValue("howWet");
+    stereoParam = apvts.getRawParameterValue("stereo");
     loadSamples();
 }
 
@@ -30,6 +31,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout FartBlasterProcessor::create
         "How Wet?",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("stereo", 1),
+        "Stereo",
+        true));
 
     return { params.begin(), params.end() };
 }
@@ -124,12 +130,19 @@ void FartBlasterProcessor::triggerFart()
     if (samples.empty())
         return;
 
+    const float pan = rng.nextFloat() * 2.0f - 1.0f;
+    const float panAngle = (pan + 1.0f) * 0.25f * juce::MathConstants<float>::pi;
+    const float gL = std::cos(panAngle);
+    const float gR = std::sin(panAngle);
+
     for (auto& v : voices)
     {
         if (!v.active)
         {
             v.sampleIndex = rng.nextInt(static_cast<int>(samples.size()));
             v.position = 0.0;
+            v.gainL = gL;
+            v.gainR = gR;
             v.active = true;
             return;
         }
@@ -137,6 +150,8 @@ void FartBlasterProcessor::triggerFart()
 
     voices[0].sampleIndex = rng.nextInt(static_cast<int>(samples.size()));
     voices[0].position = 0.0;
+    voices[0].gainL = gL;
+    voices[0].gainR = gR;
     voices[0].active = true;
 }
 
@@ -149,6 +164,8 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
 
     float howMuch = howMuchParam->load();
     float howWet = howWetParam->load();
+    const bool stereo = stereoParam->load() > 0.5f;
+    constexpr float monoGain = 0.7071f;
 
     fartBuffer.setSize(2, numSamples, false, false, true);
     fartBuffer.clear();
@@ -181,8 +198,9 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     }
     lastHowMuch = howMuch;
 
-    // Render active voices into fartBuffer channel 0
-    float* fartData = fartBuffer.getWritePointer(0);
+    // Render active voices into fartBuffer with per-voice equal-power pan
+    float* fartL = fartBuffer.getWritePointer(0);
+    float* fartR = fartBuffer.getWritePointer(1);
 
     for (auto& voice : voices)
     {
@@ -211,21 +229,22 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
 
             float frac = static_cast<float>(voice.position - pos0);
             float val = src[pos0] * (1.0f - frac) + src[pos0 + 1] * frac;
-            fartData[i] += val;
+            const float gL = stereo ? voice.gainL : monoGain;
+            const float gR = stereo ? voice.gainR : monoGain;
+            fartL[i] += val * gL;
+            fartR[i] += val * gR;
             voice.position += ratio;
         }
     }
-
-    // Copy mono fart signal to stereo
-    fartBuffer.copyFrom(1, 0, fartBuffer, 0, 0, numSamples);
 
     // Add dry fart signal to output (always audible)
     int chans = juce::jmin(numChannels, 2);
     for (int ch = 0; ch < chans; ++ch)
         buffer.addFrom(ch, 0, fartBuffer, ch, 0, numSamples);
 
-    // --- Delay processing ---
-    // Write fart signal into delay line, add echo-only output to the main buffer
+    // --- Ping-pong delay ---
+    // L input + R echo feedback writes into L line; R input + L echo feedback writes into R line.
+    // Result: echoes bounce L→R→L→R at delayTimeSec intervals.
     if (delayBufSize > 0)
     {
         float* outL = (numChannels > 0) ? buffer.getWritePointer(0) : nullptr;
@@ -242,8 +261,10 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
             float echoL = delayLineL[static_cast<size_t>(readPos)];
             float echoR = delayLineR[static_cast<size_t>(readPos)];
 
-            delayLineL[static_cast<size_t>(delayWritePos)] = inL + echoL * delayFeedback;
-            delayLineR[static_cast<size_t>(delayWritePos)] = inR + echoR * delayFeedback;
+            const float fbL = stereo ? echoR : echoL;
+            const float fbR = stereo ? echoL : echoR;
+            delayLineL[static_cast<size_t>(delayWritePos)] = inL + fbL * delayFeedback;
+            delayLineR[static_cast<size_t>(delayWritePos)] = inR + fbR * delayFeedback;
 
             if (outL != nullptr) outL[i] += echoL * howWet;
             if (outR != nullptr) outR[i] += echoR * howWet;

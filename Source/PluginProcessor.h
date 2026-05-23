@@ -45,6 +45,8 @@ private:
         int sampleIndex = -1;
         double position = 0.0;
         bool active = false;
+        float gainL = 0.7071f;
+        float gainR = 0.7071f;
     };
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -74,6 +76,7 @@ private:
 
     std::atomic<float>* howMuchParam = nullptr;
     std::atomic<float>* howWetParam = nullptr;
+    std::atomic<float>* stereoParam = nullptr;
 
     // Readable by editor for interval display
     std::atomic<float> currentIntervalSec{0.0f};

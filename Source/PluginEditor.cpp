@@ -143,6 +143,16 @@ FartBlasterEditor::FartBlasterEditor(FartBlasterProcessor& p)
     howWetAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processor.apvts, "howWet", howWetSlider);
 
+    stereoButton.setClickingTogglesState(true);
+    stereoButton.setButtonText("STEREO");
+    stereoButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff0a1a0a));
+    stereoButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff1a5a1a));
+    stereoButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xff556655));
+    stereoButton.setColour(juce::TextButton::textColourOnId, juce::Colour(0xff33ff33));
+    addAndMakeVisible(stereoButton);
+    stereoAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        processor.apvts, "stereo", stereoButton);
+
     logoImage = juce::ImageCache::getFromMemory(
         BinaryData::logotruckpacker_png, BinaryData::logotruckpacker_pngSize);
     brandButton = std::make_unique<BrandButton>(logoImage);
@@ -278,6 +288,12 @@ void FartBlasterEditor::resized()
 
     howWetSlider.setBounds(startX + knobSize + spacing, knobY, knobSize, knobSize);
     howWetLabel.setBounds(startX + knobSize + spacing, labelY, knobSize, 30);
+
+    // STEREO toggle beneath the HOW WET knob (mirrors the interval readout under HOW MUCH)
+    int btnW = 110;
+    int btnH = 26;
+    int btnX = startX + knobSize + spacing + (knobSize - btnW) / 2;
+    stereoButton.setBounds(btnX, 332, btnW, btnH);
 
     // Brand button in the footer area
     brandButton->setBounds((getWidth() - 200) / 2, getHeight() - 48, 200, 42);
