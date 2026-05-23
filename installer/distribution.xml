@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>Fart Blaster 3000</title>
+    <organization>com.FartCo</organization>
+    <welcome file="welcome.html" mime-type="text/html" />
+    <conclusion file="conclusion.html" mime-type="text/html" />
+
+    <!-- Require macOS 10.13+ on Apple Silicon. -->
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="10.13" />
+        </allowed-os-versions>
+    </volume-check>
+
+    <options customize="never" require-scripts="false" rootVolumeOnly="true" />
+
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.FartCo.FartBlaster.vst3" />
+            <line choice="com.FartCo.FartBlaster.au" />
+            <line choice="com.FartCo.FartBlaster.app" />
+        </line>
+    </choices-outline>
+
+    <choice id="default" title="Fart Blaster 3000" />
+
+    <choice id="com.FartCo.FartBlaster.vst3"
+            title="VST3 Plugin"
+            description="Installs the VST3 plugin to /Library/Audio/Plug-Ins/VST3.">
+        <pkg-ref id="com.FartCo.FartBlaster.vst3" />
+    </choice>
+    <choice id="com.FartCo.FartBlaster.au"
+            title="AU Plugin"
+            description="Installs the Audio Unit to /Library/Audio/Plug-Ins/Components.">
+        <pkg-ref id="com.FartCo.FartBlaster.au" />
+    </choice>
+    <choice id="com.FartCo.FartBlaster.app"
+            title="Standalone Application"
+            description="Installs the standalone app to /Applications.">
+        <pkg-ref id="com.FartCo.FartBlaster.app" />
+    </choice>
+
+    <pkg-ref id="com.FartCo.FartBlaster.vst3">FartBlaster-VST3.pkg</pkg-ref>
+    <pkg-ref id="com.FartCo.FartBlaster.au">FartBlaster-AU.pkg</pkg-ref>
+    <pkg-ref id="com.FartCo.FartBlaster.app">FartBlaster-App.pkg</pkg-ref>
+</installer-gui-script>

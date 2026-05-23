@@ -1,0 +1,41 @@
+#!/bin/bash
+# Preinstall script for Fart Blaster 3000
+# Removes any prior installation from both /Library (system) and the
+# console user's ~/Library (manual-copy era) so the new bundles land clean.
+
+set -e
+
+PLUGIN_NAME="Fart Blaster 3000"
+
+# Resolve the user who triggered the install (not root) so we can clean
+# their ~/Library too. macOS installers run as root, but $USER inside a
+# pkg script is unreliable -- use scutil to ask who's logged in.
+CONSOLE_USER=$(stat -f%Su /dev/console 2>/dev/null || echo "")
+CONSOLE_HOME=""
+if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
+    CONSOLE_HOME=$(dscl . -read /Users/"$CONSOLE_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
+fi
+
+# Candidate locations to clean.
+LOCATIONS=(
+    "/Library/Audio/Plug-Ins/VST3/${PLUGIN_NAME}.vst3"
+    "/Library/Audio/Plug-Ins/Components/${PLUGIN_NAME}.component"
+    "/Applications/${PLUGIN_NAME}.app"
+)
+
+if [ -n "$CONSOLE_HOME" ] && [ -d "$CONSOLE_HOME" ]; then
+    LOCATIONS+=(
+        "${CONSOLE_HOME}/Library/Audio/Plug-Ins/VST3/${PLUGIN_NAME}.vst3"
+        "${CONSOLE_HOME}/Library/Audio/Plug-Ins/Components/${PLUGIN_NAME}.component"
+        "${CONSOLE_HOME}/Applications/${PLUGIN_NAME}.app"
+    )
+fi
+
+for path in "${LOCATIONS[@]}"; do
+    if [ -e "$path" ]; then
+        echo "Removing existing: $path"
+        rm -rf "$path"
+    fi
+done
+
+exit 0

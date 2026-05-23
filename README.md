@@ -18,24 +18,30 @@ Grab the latest release from the [Releases page](../../releases). The zip contai
 
 ## Installation (macOS)
 
-Release builds (v1.1.1 and later) are signed with a Developer ID Application certificate and notarized by Apple, so macOS Gatekeeper will accept them on download with no extra steps. Just unzip and copy the bundles into the folders below.
+Release builds are signed with a Developer ID certificate and notarized by Apple.
+
+### Recommended: use the installer
+
+Download `FartBlaster3000-Installer.pkg`, double-click it, and follow the prompts. The installer:
+
+- Removes any previous Fart Blaster 3000 from both `/Library` and `~/Library`
+- Installs the VST3 to `/Library/Audio/Plug-Ins/VST3/`
+- Installs the AU to `/Library/Audio/Plug-Ins/Components/`
+- Installs the standalone to `/Applications/`
+
+You'll be prompted for your admin password once.
+
+### Alternative: manual install from the zip
+
+If you'd rather not run the installer, download `FartBlaster3000-macOS.zip` and copy the bundles yourself:
+
+- `Fart Blaster 3000.vst3` → `~/Library/Audio/Plug-Ins/VST3/`
+- `Fart Blaster 3000.component` → `~/Library/Audio/Plug-Ins/Components/`
+- `Fart Blaster 3000.app` → drag anywhere (e.g. `/Applications`)
+
+Both releases are signed and notarized — Gatekeeper will accept them with no extra steps.
 
 > Building from source produces an ad-hoc signed binary, not a notarized one — if you build it yourself and Gatekeeper complains, run `xattr -cr *` in the build output folder to clear the quarantine xattr.
-
-### VST3
-Copy `Fart Blaster 3000.vst3` to:
-```
-~/Library/Audio/Plug-Ins/VST3/
-```
-
-### AU (Audio Unit)
-Copy `Fart Blaster 3000.component` to:
-```
-~/Library/Audio/Plug-Ins/Components/
-```
-
-### Standalone
-Just double-click `Fart Blaster 3000.app` — no installation needed. Select your audio output device in the settings dialog that appears on first launch.
 
 ### After installing plugins
 Restart your DAW, then look for **Fart Blaster 3000** (manufacturer: FartCo) in your plugin list. Load it as an insert effect on any track.
