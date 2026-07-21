@@ -4,8 +4,9 @@ The Ultimate Flatulence Experience. A VST3/AU audio plugin that plays randomized
 
 ## Controls
 
-- **HOW MUCH?** — Controls how often farts play. All the way left = OFF. All the way right = nonstop back-to-back farts. The current interval is displayed below the knob.
+- **HOW MUCH?** — Controls how often farts play. All the way left = OFF. All the way right = nonstop back-to-back farts. The current interval is displayed below the knob. In **MOOD** mode this knob becomes sensitivity instead (see below).
 - **HOW WET?** — Blends in a stereo delay (340ms echo with feedback) and reverb. At 0 = pure dry farts. Crank it up for farts in a cathedral.
+- **MOOD** — Audio-reactive triggering. ON: farts fire off the energy of whatever audio is coming into the track instead of a fixed timer, so the plugin blasts in time with the music (louder/busier passages set it off). HOW MUCH now sets sensitivity: left = only the biggest hits trigger a fart, right = a hair trigger that reacts to nearly everything. A built-in refractory gate keeps it from machine-gunning on sustained loud sections. OFF: classic timed behavior driven by HOW MUCH.
 - **STEREO** — Toggles stereophonic mode. ON: each fart is panned randomly across the field and the delay ping-pongs L↔R for a wide stereo image. OFF: classic mono behavior — farts in the center, delay echoes stay put.
 
 ## Download
@@ -92,6 +93,7 @@ xcrun stapler staple "Fart Blaster 3000.vst3" "Fart Blaster 3000.component" "Far
 
 - 100 premium artisanal fart samples (16-bit WAV, embedded in the binary)
 - 16-voice polyphony (yes, 16 simultaneous farts)
+- MOOD mode: audio-reactive triggering that fires farts off the input signal
 - Ping-pong stereo delay with feedback (switchable mono/stereo)
 - Freeverb-based reverb with per-voice random panning in stereo mode
 - Animated stink line GUI in Papyrus font

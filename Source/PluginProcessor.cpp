@@ -11,6 +11,7 @@ FartBlasterProcessor::FartBlasterProcessor()
     howMuchParam = apvts.getRawParameterValue("howMuch");
     howWetParam = apvts.getRawParameterValue("howWet");
     stereoParam = apvts.getRawParameterValue("stereo");
+    moodParam = apvts.getRawParameterValue("mood");
     loadSamples();
 }
 
@@ -36,6 +37,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout FartBlasterProcessor::create
         juce::ParameterID("stereo", 1),
         "Stereo",
         true));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("mood", 1),
+        "Mood",
+        false));
 
     return { params.begin(), params.end() };
 }
@@ -93,6 +99,10 @@ void FartBlasterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 
     samplesUntilNextFart = 1;
     lastHowMuch = -1.0f;
+
+    moodEnv = 0.0f;
+    moodGateSamples = 0;
+    moodArmed = true;
 }
 
 void FartBlasterProcessor::releaseResources()
@@ -165,12 +175,45 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     float howMuch = howMuchParam->load();
     float howWet = howWetParam->load();
     const bool stereo = stereoParam->load() > 0.5f;
+    const bool mood = moodParam->load() > 0.5f;
     constexpr float monoGain = 0.7071f;
 
     fartBuffer.setSize(2, numSamples, false, false, true);
     fartBuffer.clear();
 
-    if (howMuch < 0.001f)
+    if (mood)
+    {
+        // --- MOOD mode: fire farts off the INPUT signal's energy ---
+        // Measure the incoming audio (before we layer any farts on), follow its
+        // envelope, and blast a fart on an onset. HOW MUCH becomes sensitivity;
+        // a refractory gate + hysteresis stop it from machine-gunning on a
+        // sustained loud passage. Reacts to the music's mood, not the clock.
+        float lvl = 0.0f;
+        for (int ch = 0; ch < juce::jmin(numChannels, 2); ++ch)
+            lvl = juce::jmax(lvl, buffer.getMagnitude(ch, 0, numSamples));
+
+        // one-pole follower: fast attack so transients register, slower release
+        const float coeff = (lvl > moodEnv) ? 0.6f : 0.05f;
+        moodEnv += coeff * (lvl - moodEnv);
+
+        // HOW MUCH -> sensitivity: right = hair trigger (low threshold, short gap)
+        const float thresh = juce::jmap(howMuch, 0.0f, 1.0f, 0.35f, 0.015f);
+        const int minGap = juce::jmax(1,
+            static_cast<int>(juce::jmap(howMuch, 0.0f, 1.0f, 0.45f, 0.09f) * hostSampleRate));
+
+        moodGateSamples -= numSamples;
+        if (moodArmed && moodEnv > thresh && moodGateSamples <= 0)
+        {
+            triggerFart();
+            moodArmed = false;
+            moodGateSamples = minGap;
+        }
+        if (moodEnv < thresh * 0.55f)   // must fall back down before re-arming
+            moodArmed = true;
+
+        currentIntervalSec.store(-1.0f);   // sentinel: editor shows MOOD, not an interval
+    }
+    else if (howMuch < 0.001f)
     {
         for (auto& v : voices)
             v.active = false;
