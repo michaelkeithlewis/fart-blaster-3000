@@ -45,10 +45,12 @@ private:
     juce::Label howMuchLabel;
     juce::Label howWetLabel;
     juce::TextButton stereoButton;
+    juce::TextButton moodButton;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> howMuchAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> howWetAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> stereoAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> moodAttachment;
 
     juce::Image logoImage;
     std::unique_ptr<BrandButton> brandButton;

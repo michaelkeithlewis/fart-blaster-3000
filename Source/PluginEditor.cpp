@@ -153,13 +153,26 @@ FartBlasterEditor::FartBlasterEditor(FartBlasterProcessor& p)
     stereoAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         processor.apvts, "stereo", stereoButton);
 
+    // MOOD toggle: switches HOW MUCH from a timed interval to audio-reactive
+    // triggering (farts fire off the input signal's energy). Same styling as STEREO.
+    moodButton.setClickingTogglesState(true);
+    moodButton.setButtonText("MOOD");
+    moodButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff0a1a0a));
+    moodButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff1a5a1a));
+    moodButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xff556655));
+    moodButton.setColour(juce::TextButton::textColourOnId, juce::Colour(0xff33ff33));
+    addAndMakeVisible(moodButton);
+    moodAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        processor.apvts, "mood", moodButton);
+
     logoImage = juce::ImageCache::getFromMemory(
         BinaryData::logotruckpacker_png, BinaryData::logotruckpacker_pngSize);
     brandButton = std::make_unique<BrandButton>(logoImage);
     addAndMakeVisible(*brandButton);
 
     // setSize must be last -- it triggers resized() which needs all members ready
-    setSize(520, 480);
+    // (520x510 gives the toggle row room beneath the knobs without crowding the footer)
+    setSize(520, 510);
     startTimerHz(30);
 }
 
@@ -172,8 +185,14 @@ void FartBlasterEditor::timerCallback()
 {
     stinkPhase += 0.06f;
 
+    const bool mood = processor.apvts.getRawParameterValue("mood")->load() > 0.5f;
     float howMuch = processor.apvts.getRawParameterValue("howMuch")->load();
-    if (howMuch < 0.001f)
+    if (mood)
+    {
+        // In MOOD mode HOW MUCH is sensitivity, not an interval.
+        intervalText = "MOOD: reacts to audio";
+    }
+    else if (howMuch < 0.001f)
     {
         intervalText = "OFF";
     }
@@ -289,11 +308,15 @@ void FartBlasterEditor::resized()
     howWetSlider.setBounds(startX + knobSize + spacing, knobY, knobSize, knobSize);
     howWetLabel.setBounds(startX + knobSize + spacing, labelY, knobSize, 30);
 
-    // STEREO toggle beneath the HOW WET knob (mirrors the interval readout under HOW MUCH)
+    // Toggle row beneath the knobs: MOOD under HOW MUCH, STEREO under HOW WET.
+    // MOOD sits below the interval/mood readout (drawn at y=334 under HOW MUCH).
     int btnW = 110;
     int btnH = 26;
-    int btnX = startX + knobSize + spacing + (knobSize - btnW) / 2;
-    stereoButton.setBounds(btnX, 332, btnW, btnH);
+    int btnY = 360;
+    int moodX = startX + (knobSize - btnW) / 2;
+    int stereoX = startX + knobSize + spacing + (knobSize - btnW) / 2;
+    moodButton.setBounds(moodX, btnY, btnW, btnH);
+    stereoButton.setBounds(stereoX, btnY, btnW, btnH);
 
     // Brand button in the footer area
     brandButton->setBounds((getWidth() - 200) / 2, getHeight() - 48, 200, 42);

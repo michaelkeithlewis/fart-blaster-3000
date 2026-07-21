@@ -77,6 +77,14 @@ private:
     std::atomic<float>* howMuchParam = nullptr;
     std::atomic<float>* howWetParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;
+    std::atomic<float>* moodParam = nullptr;
+
+    // MOOD mode: audio-reactive triggering. Farts fire off the input signal's
+    // energy (onset detection) instead of the timed interval; HOW MUCH becomes
+    // sensitivity. envelope + refractory gate + hysteresis keep it musical.
+    float moodEnv = 0.0f;
+    int moodGateSamples = 0;
+    bool moodArmed = true;
 
     // Readable by editor for interval display
     std::atomic<float> currentIntervalSec{0.0f};
