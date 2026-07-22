@@ -11,6 +11,7 @@ FartBlasterProcessor::FartBlasterProcessor()
     howMuchParam = apvts.getRawParameterValue("howMuch");
     howWetParam = apvts.getRawParameterValue("howWet");
     stereoParam = apvts.getRawParameterValue("stereo");
+    midiPitchParam = apvts.getRawParameterValue("midiPitch");
     loadSamples();
 }
 
@@ -35,6 +36,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout FartBlasterProcessor::create
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("stereo", 1),
         "Stereo",
+        true));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("midiPitch", 1),
+        "Pitch By Note",
         true));
 
     return { params.begin(), params.end() };
@@ -125,7 +131,7 @@ float FartBlasterProcessor::getRandomInterval()
     return base * jitter;
 }
 
-void FartBlasterProcessor::triggerFart()
+void FartBlasterProcessor::triggerFart(float velocity, int noteNumber)
 {
     if (samples.empty())
         return;
@@ -135,27 +141,38 @@ void FartBlasterProcessor::triggerFart()
     const float gL = std::cos(panAngle);
     const float gR = std::sin(panAngle);
 
+    // Velocity → loudness, with a floor so gentle taps still audibly fart
+    const float gain = 0.2f + 0.8f * juce::jlimit(0.0f, 1.0f, velocity);
+
+    // Pitch-by-note: middle C (60) = native pitch, one semitone per key
+    const double rate = noteNumber >= 0
+        ? std::pow(2.0, (noteNumber - 60) / 12.0)
+        : 1.0;
+
+    auto fire = [&](Voice& v)
+    {
+        v.sampleIndex = rng.nextInt(static_cast<int>(samples.size()));
+        v.position = 0.0;
+        v.gainL = gL;
+        v.gainR = gR;
+        v.gain = gain;
+        v.rate = rate;
+        v.active = true;
+    };
+
     for (auto& v : voices)
     {
         if (!v.active)
         {
-            v.sampleIndex = rng.nextInt(static_cast<int>(samples.size()));
-            v.position = 0.0;
-            v.gainL = gL;
-            v.gainR = gR;
-            v.active = true;
+            fire(v);
             return;
         }
     }
 
-    voices[0].sampleIndex = rng.nextInt(static_cast<int>(samples.size()));
-    voices[0].position = 0.0;
-    voices[0].gainL = gL;
-    voices[0].gainR = gR;
-    voices[0].active = true;
+    fire(voices[0]);
 }
 
-void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
 
@@ -165,15 +182,31 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     float howMuch = howMuchParam->load();
     float howWet = howWetParam->load();
     const bool stereo = stereoParam->load() > 0.5f;
+    const bool pitchByNote = midiPitchParam->load() > 0.5f;
     constexpr float monoGain = 0.7071f;
 
     fartBuffer.setSize(2, numSamples, false, false, true);
     fartBuffer.clear();
 
+    // Merge the editor's on-screen keyboard into the host MIDI stream, then
+    // fire a fart for every Note On. Note Offs are ignored: once a fart is
+    // in flight, nothing can stop it.
+    keyboardState.processNextMidiBuffer(midiMessages, 0, numSamples, true);
+    for (const auto metadata : midiMessages)
+    {
+        const auto msg = metadata.getMessage();
+        if (msg.isNoteOn())
+            triggerFart(msg.getFloatVelocity(),
+                        pitchByNote ? msg.getNoteNumber() : -1);
+    }
+
     if (howMuch < 0.001f)
     {
-        for (auto& v : voices)
-            v.active = false;
+        // Random engine off. Kill voices only on the transition to OFF so
+        // MIDI-triggered farts still play while the knob sits at zero.
+        if (lastHowMuch >= 0.001f)
+            for (auto& v : voices)
+                v.active = false;
         samplesUntilNextFart = 1;
         currentIntervalSec.store(0.0f);
     }
@@ -214,7 +247,7 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
         }
 
         auto& sample = samples[static_cast<size_t>(voice.sampleIndex)];
-        double ratio = sample.sampleRate / hostSampleRate;
+        double ratio = (sample.sampleRate / hostSampleRate) * voice.rate;
         const float* src = sample.buffer.getReadPointer(0);
         int srcLen = sample.buffer.getNumSamples();
 
@@ -231,8 +264,8 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
             float val = src[pos0] * (1.0f - frac) + src[pos0 + 1] * frac;
             const float gL = stereo ? voice.gainL : monoGain;
             const float gR = stereo ? voice.gainR : monoGain;
-            fartL[i] += val * gL;
-            fartR[i] += val * gR;
+            fartL[i] += val * voice.gain * gL;
+            fartR[i] += val * voice.gain * gR;
             voice.position += ratio;
         }
     }

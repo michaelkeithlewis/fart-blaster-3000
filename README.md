@@ -7,6 +7,8 @@ The Ultimate Flatulence Experience. A VST3/AU audio plugin that plays randomized
 - **HOW MUCH?** — Controls how often farts play. All the way left = OFF. All the way right = nonstop back-to-back farts. The current interval is displayed below the knob.
 - **HOW WET?** — Blends in a stereo delay (340ms echo with feedback) and reverb. At 0 = pure dry farts. Crank it up for farts in a cathedral.
 - **STEREO** — Toggles stereophonic mode. ON: each fart is panned randomly across the field and the delay ping-pongs L↔R for a wide stereo image. OFF: classic mono behavior — farts in the center, delay echoes stay put.
+- **MIDI TRIGGER** — Every MIDI Note On fires a fart, on top of (or instead of) the random timer. Velocity controls loudness. Works with your DAW's MIDI routing, a hardware controller, or the on-screen keyboard built into the plugin window. Set HOW MUCH? to OFF for pure keyboard-controlled flatulence.
+- **PITCH BY NOTE** — When ON, the note you play repitches the fart: middle C is the natural register, low keys give you subterranean rumbles, high keys give you piccolo squeaks. When OFF, every key plays farts at their natural pitch.
 
 ## Download
 
