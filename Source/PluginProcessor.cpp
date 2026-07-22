@@ -67,6 +67,13 @@ void FartBlasterProcessor::loadSamples()
         sample.buffer.setSize(1, static_cast<int>(reader->lengthInSamples));
         reader->read(&sample.buffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, false);
         trimLeadingSilence(sample);
+
+        // Normalize every fart to the same peak so no key is quieter
+        // than its neighbors (velocity still scales from here).
+        const float peak = sample.buffer.getMagnitude(0, 0, sample.buffer.getNumSamples());
+        if (peak > 0.0001f)
+            sample.buffer.applyGain(0.89f / peak);   // ≈ -1 dBFS
+
         samples.push_back(std::move(sample));
     }
 }
