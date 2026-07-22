@@ -112,7 +112,8 @@ void BrandButton::mouseExit(const juce::MouseEvent&)  { hovering = false; repain
 // =============================================================================
 
 FartBlasterEditor::FartBlasterEditor(FartBlasterProcessor& p)
-    : AudioProcessorEditor(&p), processor(p)
+    : AudioProcessorEditor(&p), processor(p),
+      keyboard(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel(&fartLnf);
 
@@ -153,13 +154,36 @@ FartBlasterEditor::FartBlasterEditor(FartBlasterProcessor& p)
     stereoAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         processor.apvts, "stereo", stereoButton);
 
+    pitchButton.setClickingTogglesState(true);
+    pitchButton.setButtonText("PIANO MODE");
+    pitchButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff0a1a0a));
+    pitchButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff1a5a1a));
+    pitchButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xff556655));
+    pitchButton.setColour(juce::TextButton::textColourOnId, juce::Colour(0xff33ff33));
+    addAndMakeVisible(pitchButton);
+    pitchAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        processor.apvts, "midiPitch", pitchButton);
+
+    // On-screen fart keyboard, styled to match the swamp
+    keyboard.setAvailableRange(36, 96);                 // C2..C7
+    keyboard.setLowestVisibleKey(48);                   // start at C3
+    keyboard.setKeyWidth(24.0f);
+    keyboard.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffd8e8d0));
+    keyboard.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff0a1a0a));
+    keyboard.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff3d2b1f));
+    keyboard.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, juce::Colour(0x4433ff33));
+    keyboard.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, juce::Colour(0xaa33ff33));
+    keyboard.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xff3d2b1f));
+    keyboard.setColour(juce::MidiKeyboardComponent::shadowColourId, juce::Colour(0x88000000));
+    addAndMakeVisible(keyboard);
+
     logoImage = juce::ImageCache::getFromMemory(
         BinaryData::logotruckpacker_png, BinaryData::logotruckpacker_pngSize);
     brandButton = std::make_unique<BrandButton>(logoImage);
     addAndMakeVisible(*brandButton);
 
     // setSize must be last -- it triggers resized() which needs all members ready
-    setSize(520, 480);
+    setSize(520, 610);
     startTimerHz(30);
 }
 
@@ -172,8 +196,21 @@ void FartBlasterEditor::timerCallback()
 {
     stinkPhase += 0.06f;
 
+    // Piano mode and the random engine are mutually exclusive — grey out
+    // whichever half isn't driving.
+    const bool pianoMode = processor.apvts.getRawParameterValue("midiPitch")->load() > 0.5f;
+    howMuchSlider.setEnabled(!pianoMode);
+    howMuchSlider.setAlpha(pianoMode ? 0.35f : 1.0f);
+    howMuchLabel.setAlpha(pianoMode ? 0.35f : 1.0f);
+    keyboard.setEnabled(pianoMode);
+    keyboard.setAlpha(pianoMode ? 1.0f : 0.35f);
+
     float howMuch = processor.apvts.getRawParameterValue("howMuch")->load();
-    if (howMuch < 0.001f)
+    if (pianoMode)
+    {
+        intervalText = "PIANO MODE";
+    }
+    else if (howMuch < 0.001f)
     {
         intervalText = "OFF";
     }
@@ -269,6 +306,16 @@ void FartBlasterEditor::paint(juce::Graphics& g)
                          juce::Justification::centred, 1);
     }
 
+    // MIDI trigger section
+    g.setColour(juce::Colour(0x4433ff33));
+    g.drawHorizontalLine(376, 40.0f, static_cast<float>(w) - 40.0f);
+    g.setColour(juce::Colour(0xff44ff44));
+    g.setFont(juce::Font("Papyrus", 18.0f, juce::Font::bold));
+    g.drawFittedText("MIDI TRIGGER", 20, 386, 200, 26, juce::Justification::centredLeft, 1);
+    g.setColour(juce::Colour(0xaaff8800));
+    g.setFont(juce::Font("Papyrus", 13.0f, juce::Font::italic));
+    g.drawFittedText("every note farts", 165, 389, 190, 20, juce::Justification::centredLeft, 1);
+
     // Separator above footer branding
     g.setColour(juce::Colour(0x2233ff33));
     g.drawHorizontalLine(h - 52, 60.0f, static_cast<float>(w) - 60.0f);
@@ -294,6 +341,10 @@ void FartBlasterEditor::resized()
     int btnH = 26;
     int btnX = startX + knobSize + spacing + (knobSize - btnW) / 2;
     stereoButton.setBounds(btnX, 332, btnW, btnH);
+
+    // MIDI trigger row: caption is painted; toggle sits right-aligned above the keys
+    pitchButton.setBounds(getWidth() - 20 - 130, 388, 130, 24);
+    keyboard.setBounds(20, 420, getWidth() - 40, 84);
 
     // Brand button in the footer area
     brandButton->setBounds((getWidth() - 200) / 2, getHeight() - 48, 200, 42);

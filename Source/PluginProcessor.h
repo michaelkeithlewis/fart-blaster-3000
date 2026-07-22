@@ -17,7 +17,7 @@ public:
     bool hasEditor() const override { return true; }
 
     const juce::String getName() const override { return JucePlugin_Name; }
-    bool acceptsMidi() const override { return false; }
+    bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 3.0; }
@@ -33,6 +33,9 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
+    // Fed by the editor's on-screen keyboard; merged with host MIDI each block
+    juce::MidiKeyboardState keyboardState;
+
 private:
     struct FartSample
     {
@@ -47,11 +50,16 @@ private:
         bool active = false;
         float gainL = 0.7071f;
         float gainR = 0.7071f;
+        float gain = 1.0f;      // velocity scaling
+        double rate = 1.0;      // pitch-by-note playback rate
+        int note = -1;          // MIDI note that fired this voice
+        bool fromMidi = false;  // MIDI-fired (vs random engine)
     };
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void loadSamples();
-    void triggerFart();
+    void trimLeadingSilence(FartSample& sample);
+    void triggerFart(float velocity = 1.0f, int noteNumber = -1, bool fromMidi = false);
     float getRandomInterval();
 
     std::vector<FartSample> samples;
@@ -72,11 +80,13 @@ private:
     double hostSampleRate = 44100.0;
     int samplesUntilNextFart = 1;
     float lastHowMuch = -1.0f;
+    bool lastPianoMode = false;
     juce::Random rng;
 
     std::atomic<float>* howMuchParam = nullptr;
     std::atomic<float>* howWetParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;
+    std::atomic<float>* midiPitchParam = nullptr;
 
     // Readable by editor for interval display
     std::atomic<float> currentIntervalSec{0.0f};
