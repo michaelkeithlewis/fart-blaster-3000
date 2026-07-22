@@ -66,8 +66,40 @@ void FartBlasterProcessor::loadSamples()
         sample.sampleRate = reader->sampleRate;
         sample.buffer.setSize(1, static_cast<int>(reader->lengthInSamples));
         reader->read(&sample.buffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, false);
+        trimLeadingSilence(sample);
         samples.push_back(std::move(sample));
     }
+}
+
+void FartBlasterProcessor::trimLeadingSilence(FartSample& sample)
+{
+    // Drop dead air before the fart so MIDI notes speak instantly.
+    // Threshold is relative to the file's own peak; back off ~3ms so the
+    // attack transient isn't clipped mid-rise.
+    const int numSamples = sample.buffer.getNumSamples();
+    if (numSamples == 0)
+        return;
+
+    const float peak = sample.buffer.getMagnitude(0, 0, numSamples);
+    if (peak <= 0.0f)
+        return;
+
+    const float threshold = peak * 0.02f;
+    const float* data = sample.buffer.getReadPointer(0);
+
+    int first = 0;
+    while (first < numSamples && std::abs(data[first]) < threshold)
+        ++first;
+
+    const int backoff = static_cast<int>(sample.sampleRate * 0.003);
+    first = juce::jmax(0, first - backoff);
+    if (first == 0)
+        return;
+
+    const int trimmedLen = numSamples - first;
+    juce::AudioBuffer<float> trimmed(1, trimmedLen);
+    trimmed.copyFrom(0, 0, sample.buffer, 0, first, trimmedLen);
+    sample.buffer = std::move(trimmed);
 }
 
 void FartBlasterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
@@ -131,10 +163,17 @@ float FartBlasterProcessor::getRandomInterval()
     return base * jitter;
 }
 
-void FartBlasterProcessor::triggerFart(float velocity, int noteNumber)
+void FartBlasterProcessor::triggerFart(float velocity, int noteNumber, bool fromMidi)
 {
     if (samples.empty())
         return;
+
+    // A played note takes the stage: choke any random-engine farts so the
+    // keyboard is what you hear. Other MIDI farts keep ringing (chords work).
+    if (fromMidi)
+        for (auto& v : voices)
+            if (v.active && !v.fromMidi)
+                v.active = false;
 
     const float pan = rng.nextFloat() * 2.0f - 1.0f;
     const float panAngle = (pan + 1.0f) * 0.25f * juce::MathConstants<float>::pi;
@@ -157,6 +196,7 @@ void FartBlasterProcessor::triggerFart(float velocity, int noteNumber)
         v.gainR = gR;
         v.gain = gain;
         v.rate = rate;
+        v.fromMidi = fromMidi;
         v.active = true;
     };
 
@@ -196,8 +236,18 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     {
         const auto msg = metadata.getMessage();
         if (msg.isNoteOn())
+        {
             triggerFart(msg.getFloatVelocity(),
-                        pitchByNote ? msg.getNoteNumber() : -1);
+                        pitchByNote ? msg.getNoteNumber() : -1,
+                        true);
+            // Push the random engine back a full interval so it doesn't
+            // barge in right after the note.
+            float interval = getRandomInterval();
+            currentIntervalSec.store(interval);
+            samplesUntilNextFart = juce::jmax(
+                samplesUntilNextFart,
+                juce::jmax(1, static_cast<int>(interval * hostSampleRate)));
+        }
     }
 
     if (howMuch < 0.001f)
@@ -212,11 +262,13 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     }
     else
     {
-        // Knob moved significantly → kill voices and retrigger immediately
+        // Knob moved significantly → kill random voices and retrigger
+        // immediately (MIDI-fired farts are none of the knob's business)
         if (std::abs(howMuch - lastHowMuch) > 0.015f)
         {
             for (auto& v : voices)
-                v.active = false;
+                if (!v.fromMidi)
+                    v.active = false;
             samplesUntilNextFart = 1;
         }
 

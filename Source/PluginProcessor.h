@@ -52,11 +52,13 @@ private:
         float gainR = 0.7071f;
         float gain = 1.0f;      // velocity scaling
         double rate = 1.0;      // pitch-by-note playback rate
+        bool fromMidi = false;  // MIDI-fired (vs random engine)
     };
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void loadSamples();
-    void triggerFart(float velocity = 1.0f, int noteNumber = -1);
+    void trimLeadingSilence(FartSample& sample);
+    void triggerFart(float velocity = 1.0f, int noteNumber = -1, bool fromMidi = false);
     float getRandomInterval();
 
     std::vector<FartSample> samples;
