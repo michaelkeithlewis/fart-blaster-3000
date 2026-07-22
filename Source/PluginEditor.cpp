@@ -196,8 +196,21 @@ void FartBlasterEditor::timerCallback()
 {
     stinkPhase += 0.06f;
 
+    // Piano mode and the random engine are mutually exclusive — grey out
+    // whichever half isn't driving.
+    const bool pianoMode = processor.apvts.getRawParameterValue("midiPitch")->load() > 0.5f;
+    howMuchSlider.setEnabled(!pianoMode);
+    howMuchSlider.setAlpha(pianoMode ? 0.35f : 1.0f);
+    howMuchLabel.setAlpha(pianoMode ? 0.35f : 1.0f);
+    keyboard.setEnabled(pianoMode);
+    keyboard.setAlpha(pianoMode ? 1.0f : 0.35f);
+
     float howMuch = processor.apvts.getRawParameterValue("howMuch")->load();
-    if (howMuch < 0.001f)
+    if (pianoMode)
+    {
+        intervalText = "PIANO MODE";
+    }
+    else if (howMuch < 0.001f)
     {
         intervalText = "OFF";
     }

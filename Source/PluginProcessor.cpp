@@ -168,11 +168,12 @@ void FartBlasterProcessor::triggerFart(float velocity, int noteNumber, bool from
     if (samples.empty())
         return;
 
-    // A played note takes the stage: choke any random-engine farts so the
-    // keyboard is what you hear. Other MIDI farts keep ringing (chords work).
+    // A played note takes the stage: choke leftover random-engine farts, and
+    // retriggering the same key chokes its previous fart (no flamming).
+    // Different notes still stack, so chords work.
     if (fromMidi)
         for (auto& v : voices)
-            if (v.active && !v.fromMidi)
+            if (v.active && (!v.fromMidi || v.note == noteNumber))
                 v.active = false;
 
     const float pan = rng.nextFloat() * 2.0f - 1.0f;
@@ -188,14 +189,21 @@ void FartBlasterProcessor::triggerFart(float velocity, int noteNumber, bool from
         ? std::pow(2.0, (noteNumber - 60) / 12.0)
         : 1.0;
 
+    // Each key owns ONE fart: note number maps to a fixed sample, so C4 is
+    // always the same fart. The random engine keeps rolling the dice.
+    const int sampleIndex = (fromMidi && noteNumber >= 0)
+        ? noteNumber % static_cast<int>(samples.size())
+        : rng.nextInt(static_cast<int>(samples.size()));
+
     auto fire = [&](Voice& v)
     {
-        v.sampleIndex = rng.nextInt(static_cast<int>(samples.size()));
+        v.sampleIndex = sampleIndex;
         v.position = 0.0;
         v.gainL = gL;
         v.gainR = gR;
         v.gain = gain;
         v.rate = rate;
+        v.note = noteNumber;
         v.fromMidi = fromMidi;
         v.active = true;
     };
@@ -222,38 +230,42 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     float howMuch = howMuchParam->load();
     float howWet = howWetParam->load();
     const bool stereo = stereoParam->load() > 0.5f;
-    const bool pitchByNote = midiPitchParam->load() > 0.5f;
+    const bool pianoMode = midiPitchParam->load() > 0.5f;
     constexpr float monoGain = 0.7071f;
 
     fartBuffer.setSize(2, numSamples, false, false, true);
     fartBuffer.clear();
 
-    // Merge the editor's on-screen keyboard into the host MIDI stream, then
-    // fire a fart for every Note On. Note Offs are ignored: once a fart is
-    // in flight, nothing can stop it.
-    keyboardState.processNextMidiBuffer(midiMessages, 0, numSamples, true);
-    for (const auto metadata : midiMessages)
+    // Two mutually exclusive modes:
+    //   PIANO  (PITCH BY NOTE on):  MIDI notes fart, random engine is dead.
+    //   RANDOM (PITCH BY NOTE off): HOW MUCH? engine farts, MIDI is ignored.
+    if (pianoMode != lastPianoMode)
     {
-        const auto msg = metadata.getMessage();
-        if (msg.isNoteOn())
-        {
-            triggerFart(msg.getFloatVelocity(),
-                        pitchByNote ? msg.getNoteNumber() : -1,
-                        true);
-            // Push the random engine back a full interval so it doesn't
-            // barge in right after the note.
-            float interval = getRandomInterval();
-            currentIntervalSec.store(interval);
-            samplesUntilNextFart = juce::jmax(
-                samplesUntilNextFart,
-                juce::jmax(1, static_cast<int>(interval * hostSampleRate)));
-        }
+        // Mode flipped: silence the other mode's leftovers immediately
+        for (auto& v : voices)
+            if (v.fromMidi != pianoMode)
+                v.active = false;
+        samplesUntilNextFart = 1;
+        lastPianoMode = pianoMode;
     }
 
-    if (howMuch < 0.001f)
+    // Merge the editor's on-screen keyboard into the host MIDI stream, then
+    // (in piano mode) fire a fart for every Note On. Note Offs are ignored:
+    // once a fart is in flight, nothing can stop it.
+    keyboardState.processNextMidiBuffer(midiMessages, 0, numSamples, true);
+    if (pianoMode)
     {
-        // Random engine off. Kill voices only on the transition to OFF so
-        // MIDI-triggered farts still play while the knob sits at zero.
+        for (const auto metadata : midiMessages)
+        {
+            const auto msg = metadata.getMessage();
+            if (msg.isNoteOn())
+                triggerFart(msg.getFloatVelocity(), msg.getNoteNumber(), true);
+        }
+        currentIntervalSec.store(0.0f);
+    }
+    else if (howMuch < 0.001f)
+    {
+        // Random engine off. Kill voices only on the transition to OFF.
         if (lastHowMuch >= 0.001f)
             for (auto& v : voices)
                 v.active = false;
@@ -262,13 +274,11 @@ void FartBlasterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::
     }
     else
     {
-        // Knob moved significantly → kill random voices and retrigger
-        // immediately (MIDI-fired farts are none of the knob's business)
+        // Knob moved significantly → kill voices and retrigger immediately
         if (std::abs(howMuch - lastHowMuch) > 0.015f)
         {
             for (auto& v : voices)
-                if (!v.fromMidi)
-                    v.active = false;
+                v.active = false;
             samplesUntilNextFart = 1;
         }
 

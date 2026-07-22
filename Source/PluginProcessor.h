@@ -52,6 +52,7 @@ private:
         float gainR = 0.7071f;
         float gain = 1.0f;      // velocity scaling
         double rate = 1.0;      // pitch-by-note playback rate
+        int note = -1;          // MIDI note that fired this voice
         bool fromMidi = false;  // MIDI-fired (vs random engine)
     };
 
@@ -79,6 +80,7 @@ private:
     double hostSampleRate = 44100.0;
     int samplesUntilNextFart = 1;
     float lastHowMuch = -1.0f;
+    bool lastPianoMode = false;
     juce::Random rng;
 
     std::atomic<float>* howMuchParam = nullptr;
