@@ -7,8 +7,8 @@ The Ultimate Flatulence Experience. A VST3/AU audio plugin that plays randomized
 - **HOW MUCH?** — Controls how often farts play. All the way left = OFF. All the way right = nonstop back-to-back farts. The current interval is displayed below the knob.
 - **HOW WET?** — Blends in a stereo delay (340ms echo with feedback) and reverb. At 0 = pure dry farts. Crank it up for farts in a cathedral.
 - **STEREO** — Toggles stereophonic mode. ON: each fart is panned randomly across the field and the delay ping-pongs L↔R for a wide stereo image. OFF: classic mono behavior — farts in the center, delay echoes stay put.
-- **PITCH BY NOTE** — The mode switch. ON = piano mode: MIDI notes fire farts and the random engine is fully disabled (HOW MUCH? greys out). OFF = random mode: the HOW MUCH? timer farts on its own and MIDI is ignored (the keyboard greys out). One master at a time.
-- **MIDI TRIGGER (piano mode)** — Every MIDI Note On fires a fart instantly (samples are silence-trimmed on load, so the attack lands right on the key press). Each key owns one fixed fart sample — C4 is always the same fart — repitched by note, with middle C as the natural register: low keys rumble, high keys squeak. Velocity controls loudness. Retriggering a key chokes its previous fart; different keys stack into chords. Works with your DAW's MIDI routing, a hardware controller, or the on-screen keyboard built into the plugin window.
+- **PIANO MODE** — The mode switch. ON: MIDI notes fire farts and the random engine is fully disabled (HOW MUCH? greys out). OFF: the HOW MUCH? timer farts on its own and MIDI is ignored (the keyboard greys out). One master at a time.
+- **MIDI TRIGGER (piano mode)** — Every MIDI Note On one-shots a fart instantly at its natural pitch (samples are silence-trimmed on load, so the attack lands right on the key press). Each key owns one fixed fart sample — C4 is always the same fart. Velocity controls loudness. Retriggering a key chokes its previous fart; different keys stack into chords. Works with your DAW's MIDI routing, a hardware controller, or the on-screen keyboard built into the plugin window.
 
 ## Download
 

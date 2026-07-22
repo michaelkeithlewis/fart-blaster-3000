@@ -155,7 +155,7 @@ FartBlasterEditor::FartBlasterEditor(FartBlasterProcessor& p)
         processor.apvts, "stereo", stereoButton);
 
     pitchButton.setClickingTogglesState(true);
-    pitchButton.setButtonText("PITCH BY NOTE");
+    pitchButton.setButtonText("PIANO MODE");
     pitchButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff0a1a0a));
     pitchButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff1a5a1a));
     pitchButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xff556655));

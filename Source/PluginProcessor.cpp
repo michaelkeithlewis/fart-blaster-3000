@@ -40,7 +40,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FartBlasterProcessor::create
 
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("midiPitch", 1),
-        "Pitch By Note",
+        "Piano Mode",
         true));
 
     return { params.begin(), params.end() };
@@ -184,10 +184,8 @@ void FartBlasterProcessor::triggerFart(float velocity, int noteNumber, bool from
     // Velocity → loudness, with a floor so gentle taps still audibly fart
     const float gain = 0.2f + 0.8f * juce::jlimit(0.0f, 1.0f, velocity);
 
-    // Pitch-by-note: middle C (60) = native pitch, one semitone per key
-    const double rate = noteNumber >= 0
-        ? std::pow(2.0, (noteNumber - 60) / 12.0)
-        : 1.0;
+    // Notes one-shot their sample at natural pitch — no repitching
+    const double rate = 1.0;
 
     // Each key owns ONE fart: note number maps to a fixed sample, so C4 is
     // always the same fart. The random engine keeps rolling the dice.
